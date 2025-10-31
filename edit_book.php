@@ -1,18 +1,25 @@
 <?php
-header('Content-Type: text/html; charset=UTF-8');
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
 
 require_login();
 
-$user = get_current_user_data();
+$book_id = $_GET['id'] ?? 0;
+$book = get_book($book_id);
+
+if (!$book || !can_edit_resource($book['user_id'])) {
+    die('Книга не найдена или у вас нет прав на её редактирование.');
+}
+
 $genres = get_all_genres();
+$user = get_current_user_data();
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $title = trim($_POST['title'] ?? '');
     $author = trim($_POST['author'] ?? '');
     $description = trim($_POST['description'] ?? '');
+    $status = $_POST['status'] ?? 'available';
     $genre_ids = $_POST['genres'] ?? [];
     
     // Валидация
@@ -20,39 +27,39 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $error = 'Пожалуйста, заполните название и автора книги.';
     } else {
         // Обработка загрузки изображения
-        $image_filename = null;
+        $image_filename = $book['image'];
         
         if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
             $file = $_FILES['image'];
             
-            // Проверяем тип файла
             if (!in_array($file['type'], ALLOWED_IMAGE_TYPES)) {
-                $error = 'Недопустимый формат изображения. Используйте JPEG, PNG или GIF.';
+                $error = 'Недопустимый формат изображения.';
             } elseif ($file['size'] > MAX_FILE_SIZE) {
-                $error = 'Размер файла слишком большой. Максимум ' . (MAX_FILE_SIZE / 1024 / 1024) . ' MB.';
+                $error = 'Размер файла слишком большой.';
             } else {
-                // Генерируем уникальное имя файла
                 $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
                 $image_filename = 'books/' . uniqid() . '.' . $extension;
                 
-                // Перемещаем файл
                 if (!move_uploaded_file($file['tmp_name'], UPLOAD_DIR . $image_filename)) {
                     $error = 'Ошибка при загрузке файла.';
-                    $image_filename = null;
+                    $image_filename = $book['image'];
                 }
             }
         }
         
         if (!$error) {
             try {
-                $book_id = create_book($user['id'], $title, $author, $description, $image_filename, $genre_ids);
-                header('Location: dashboard.php?success=added');
+                update_book($book_id, $title, $author, $description, $status, $image_filename, $genre_ids);
+                header('Location: dashboard.php?success=updated');
                 exit();
             } catch (Exception $e) {
-                $error = 'Ошибка добавления книги: ' . $e->getMessage();
+                $error = 'Ошибка обновления книги: ' . $e->getMessage();
             }
         }
     }
+} else {
+    // Получаем текущие жанры книги
+    $_POST['genres'] = explode(',', $book['genre_ids'] ?? '');
 }
 ?>
 
@@ -61,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Добавить книгу</title>
+    <title>Редактировать книгу</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -79,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </nav>
 
     <div class="container">
-        <h1>➕ Добавить книгу</h1>
+        <h1>✏️ Редактировать книгу</h1>
         
         <?php if ($error): ?>
             <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
@@ -88,12 +95,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <form method="POST" enctype="multipart/form-data" class="form">
             <div class="form-group">
                 <label>Название книги *</label>
-                <input type="text" name="title" required value="<?= htmlspecialchars($_POST['title'] ?? '') ?>" placeholder="Например: 1984">
+                <input type="text" name="title" required value="<?= htmlspecialchars($book['title']) ?>">
             </div>
             
             <div class="form-group">
                 <label>Автор *</label>
-                <input type="text" name="author" required value="<?= htmlspecialchars($_POST['author'] ?? '') ?>" placeholder="Например: Джордж Оруэлл">
+                <input type="text" name="author" required value="<?= htmlspecialchars($book['author']) ?>">
             </div>
             
             <div class="form-group">
@@ -111,21 +118,34 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             <div class="form-group">
                 <label>Описание</label>
-                <textarea name="description" rows="5" placeholder="Кратко опишите книгу..."><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
+                <textarea name="description" rows="5"><?= htmlspecialchars($book['description']) ?></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Статус</label>
+                <select name="status">
+                    <option value="available" <?= $book['status'] == 'available' ? 'selected' : '' ?>>Доступна</option>
+                    <option value="taken" <?= $book['status'] == 'taken' ? 'selected' : '' ?>>Взята</option>
+                    <option value="reserved" <?= $book['status'] == 'reserved' ? 'selected' : '' ?>>Зарезервирована</option>
+                </select>
             </div>
             
             <div class="form-group">
                 <label>Фотография обложки</label>
+                <?php if ($book['image']): ?>
+                    <div class="current-image">
+                        <img src="<?= htmlspecialchars(UPLOAD_URL . $book['image']) ?>" alt="Текущая обложка" style="max-width: 200px;">
+                    </div>
+                <?php endif; ?>
                 <input type="file" name="image" accept="image/*">
-                <small>Максимальный размер: <?= MAX_FILE_SIZE / 1024 / 1024 ?> MB</small>
+                <small>Оставьте пустым, чтобы не менять изображение</small>
             </div>
             
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">💾 Сохранить книгу</button>
+                <button type="submit" class="btn btn-primary">💾 Сохранить изменения</button>
                 <a href="dashboard.php" class="btn">Отмена</a>
             </div>
         </form>
-        
     </div>
 
     <footer>
@@ -135,3 +155,4 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </footer>
 </body>
 </html>
+

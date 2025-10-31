@@ -1,0 +1,27 @@
+# Конфигурация
+config.php
+
+# Загруженные файлы
+uploads/
+!uploads/.gitkeep
+
+# Временные файлы
+*.tmp
+*.log
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Зависимости
+vendor/
+node_modules/
+
+# Системные файлы
+.env
+

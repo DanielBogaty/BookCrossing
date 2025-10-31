@@ -1,29 +1,27 @@
 <?php
-header('Content-Type: text/html; charset=UTF-8');
 require_once 'includes/auth.php';
 require_once 'includes/db.php';
 
 require_login();
 
 $user = get_current_user_data();
-$genres = get_all_genres();
 $error = '';
+$success = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $title = trim($_POST['title'] ?? '');
-    $author = trim($_POST['author'] ?? '');
-    $description = trim($_POST['description'] ?? '');
-    $genre_ids = $_POST['genres'] ?? [];
+    $username = trim($_POST['username'] ?? '');
+    $city = trim($_POST['city'] ?? '');
+    $telegram_url = trim($_POST['telegram_url'] ?? '');
     
     // Валидация
-    if (empty($title) || empty($author)) {
-        $error = 'Пожалуйста, заполните название и автора книги.';
+    if (empty($username) || empty($telegram_url)) {
+        $error = 'Пожалуйста, заполните обязательные поля.';
     } else {
-        // Обработка загрузки изображения
-        $image_filename = null;
+        // Обработка загрузки аватара
+        $avatar_filename = $user['avatar'];
         
-        if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
-            $file = $_FILES['image'];
+        if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] == UPLOAD_ERR_OK) {
+            $file = $_FILES['avatar'];
             
             // Проверяем тип файла
             if (!in_array($file['type'], ALLOWED_IMAGE_TYPES)) {
@@ -33,23 +31,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             } else {
                 // Генерируем уникальное имя файла
                 $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-                $image_filename = 'books/' . uniqid() . '.' . $extension;
+                $avatar_filename = 'avatars/' . uniqid() . '.' . $extension;
                 
                 // Перемещаем файл
-                if (!move_uploaded_file($file['tmp_name'], UPLOAD_DIR . $image_filename)) {
+                if (!move_uploaded_file($file['tmp_name'], UPLOAD_DIR . $avatar_filename)) {
                     $error = 'Ошибка при загрузке файла.';
-                    $image_filename = null;
+                    $avatar_filename = $user['avatar'];
                 }
             }
         }
         
         if (!$error) {
             try {
-                $book_id = create_book($user['id'], $title, $author, $description, $image_filename, $genre_ids);
-                header('Location: dashboard.php?success=added');
+                update_user_profile($user['id'], $username, $city, $telegram_url, $avatar_filename);
+                header('Location: dashboard.php?success=profile_updated');
                 exit();
             } catch (Exception $e) {
-                $error = 'Ошибка добавления книги: ' . $e->getMessage();
+                $error = 'Ошибка обновления профиля: ' . $e->getMessage();
             }
         }
     }
@@ -61,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Добавить книгу</title>
+    <title>Редактировать профиль</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -79,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </nav>
 
     <div class="container">
-        <h1>➕ Добавить книгу</h1>
+        <h1>✏️ Редактировать профиль</h1>
         
         <?php if ($error): ?>
             <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
@@ -87,45 +85,41 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         <form method="POST" enctype="multipart/form-data" class="form">
             <div class="form-group">
-                <label>Название книги *</label>
-                <input type="text" name="title" required value="<?= htmlspecialchars($_POST['title'] ?? '') ?>" placeholder="Например: 1984">
+                <label>Имя пользователя *</label>
+                <input type="text" name="username" required value="<?= htmlspecialchars($user['username']) ?>">
             </div>
             
             <div class="form-group">
-                <label>Автор *</label>
-                <input type="text" name="author" required value="<?= htmlspecialchars($_POST['author'] ?? '') ?>" placeholder="Например: Джордж Оруэлл">
+                <label>Email (не изменяется)</label>
+                <input type="email" value="<?= htmlspecialchars($user['email']) ?>" disabled>
             </div>
             
             <div class="form-group">
-                <label>Жанры</label>
-                <div class="checkbox-group">
-                    <?php foreach ($genres as $genre): ?>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="genres[]" value="<?= $genre['id'] ?>" 
-                                <?= in_array($genre['id'], $_POST['genres'] ?? []) ? 'checked' : '' ?>>
-                            <?= htmlspecialchars($genre['name']) ?>
-                        </label>
-                    <?php endforeach; ?>
-                </div>
+                <label>Город</label>
+                <input type="text" name="city" placeholder="Например: Москва" value="<?= htmlspecialchars($user['city'] ?? '') ?>">
             </div>
             
             <div class="form-group">
-                <label>Описание</label>
-                <textarea name="description" rows="5" placeholder="Кратко опишите книгу..."><?= htmlspecialchars($_POST['description'] ?? '') ?></textarea>
+                <label>Telegram (@никнейм) *</label>
+                <input type="text" name="telegram_url" placeholder="@ваш_ник" required value="<?= htmlspecialchars($user['telegram_url']) ?>">
             </div>
             
             <div class="form-group">
-                <label>Фотография обложки</label>
-                <input type="file" name="image" accept="image/*">
+                <label>Аватар</label>
+                <?php if ($user['avatar']): ?>
+                    <div class="current-avatar">
+                        <img src="<?= htmlspecialchars(UPLOAD_URL . $user['avatar']) ?>" alt="Текущий аватар" style="max-width: 150px; border-radius: 50%;">
+                    </div>
+                <?php endif; ?>
+                <input type="file" name="avatar" accept="image/*">
                 <small>Максимальный размер: <?= MAX_FILE_SIZE / 1024 / 1024 ?> MB</small>
             </div>
             
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">💾 Сохранить книгу</button>
+                <button type="submit" class="btn btn-primary">💾 Сохранить</button>
                 <a href="dashboard.php" class="btn">Отмена</a>
             </div>
         </form>
-        
     </div>
 
     <footer>
@@ -135,3 +129,4 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </footer>
 </body>
 </html>
+
