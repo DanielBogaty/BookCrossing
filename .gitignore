@@ -1,9 +1,7 @@
 # Конфигурация
 config.php
 
-# Загруженные файлы
-uploads/
-!uploads/.gitkeep
+
 
 # Временные файлы
 *.tmp
