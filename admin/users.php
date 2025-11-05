@@ -1,10 +1,10 @@
 <?php
-require_once '../includes/auth.php';
-require_once '../includes/db.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../app/services/AuthService.php';
 
-require_admin();
+AuthService::requireAdmin();
 
-global $pdo;
+$pdo = get_db_connection();
 
 // Получаем всех пользователей
 $users = $pdo->query("SELECT * FROM users ORDER BY created_at DESC")->fetchAll();

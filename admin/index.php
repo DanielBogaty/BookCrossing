@@ -1,11 +1,11 @@
 <?php
-require_once '../includes/auth.php';
-require_once '../includes/db.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../app/services/AuthService.php';
 
-require_admin();
+AuthService::requireAdmin();
 
 // Получаем статистику
-global $pdo;
+$pdo = get_db_connection();
 
 $stats = [];
 $stats['users'] = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();

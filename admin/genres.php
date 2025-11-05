@@ -1,10 +1,11 @@
 <?php
-require_once '../includes/auth.php';
-require_once '../includes/db.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../app/services/AuthService.php';
+require_once __DIR__ . '/../app/models/GenreModel.php';
 
-require_admin();
+AuthService::requireAdmin();
 
-global $pdo;
+$pdo = get_db_connection();
 
 $error = '';
 $success = '';
@@ -35,7 +36,7 @@ if (isset($_GET['delete'])) {
     }
 }
 
-$genres = get_all_genres();
+$genres = GenreModel::getAll();
 ?>
 
 <!DOCTYPE html>

@@ -1,10 +1,11 @@
 <?php
-require_once '../includes/auth.php';
-require_once '../includes/db.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../app/services/AuthService.php';
+require_once __DIR__ . '/../app/models/BookModel.php';
 
-require_admin();
+AuthService::requireAdmin();
 
-$books = get_all_books();
+$books = BookModel::getAll();
 ?>
 
 <!DOCTYPE html>
