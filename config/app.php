@@ -10,7 +10,7 @@ define('DB_PASSWORD', 'VaniaVera175'); // Измените на ваш паро�
 
 // Настройки приложения
 define('SITE_URL', 'http://localhost');
-define('UPLOAD_DIR', __DIR__ . '/uploads/');
+define('UPLOAD_DIR', __DIR__ . '/../uploads/');
 define('UPLOAD_URL', '/uploads/');
 
 // Максимальный размер загружаемых файлов (5 MB)
@@ -18,9 +18,6 @@ define('MAX_FILE_SIZE', 5 * 1024 * 1024);
 
 // Разрешённые типы изображений
 define('ALLOWED_IMAGE_TYPES', ['image/jpeg', 'image/png', 'image/jpg', 'image/gif']);
-
-// API ключ для карт не используется
-// define('YANDEX_MAPS_API_KEY', 'YOUR_YANDEX_MAPS_API_KEY');
 
 // Создаём директорию для загрузок если её нет
 if (!file_exists(UPLOAD_DIR)) {
