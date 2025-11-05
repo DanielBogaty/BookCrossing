@@ -1,4 +1,4 @@
--- BookCrossing Database Schema for PostgreSQL (без карт)
+﻿-- BookCrossing Database Schema for PostgreSQL (без карт)
 
 -- Удаляем существующие таблицы если они есть
 DROP TABLE IF EXISTS book_genre CASCADE;
@@ -104,4 +104,3 @@ CREATE INDEX idx_books_user_id ON books(user_id);
 CREATE INDEX idx_books_status ON books(status);
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_ratings_to_user ON ratings(to_user_id);
-
