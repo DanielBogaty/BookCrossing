@@ -51,11 +51,17 @@ class AuthService {
      * Требовать права администратора
      */
     public static function requireAdmin() {
-        self::requireLogin();
+        if (!self::isLoggedIn()) {
+            // Редирект на страницу входа в админку
+            header('Location: /admin/login.php');
+            exit();
+        }
         
         if (!self::isAdmin()) {
-            http_response_code(403);
-            die('Доступ запрещён. Требуются права администратора.');
+            // Если не админ, выходим и редиректим на админ-логин
+            session_destroy();
+            header('Location: /admin/login.php?error=access_denied');
+            exit();
         }
     }
     
